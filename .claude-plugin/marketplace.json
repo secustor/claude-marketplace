@@ -4,6 +4,9 @@
     "name": "secustor",
     "url": "https://github.com/secustor"
   },
+  "metadata": {
+    "description": "Claude Code plugins used and developed by secustor"
+  },
   "plugins": [
     {
       "name": "renovate-config-debugger",
