@@ -14,7 +14,7 @@
         "source": "github",
         "repo": "secustor/renovate-config-debugger"
       },
-      "description": "Debug Renovate configs with Renovate's own code: preset expansion, per-key provenance, the packageRules simulator and validation — as MCP tools, plus the workflow skill that uses them well. Experimental."
+      "description": "Debug Renovate configs with Renovate's own code"
     }
   ]
 }
