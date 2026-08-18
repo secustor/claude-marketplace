@@ -1,0 +1,20 @@
+{
+  "name": "secustor",
+  "owner": {
+    "name": "secustor",
+    "url": "https://github.com/secustor"
+  },
+  "metadata": {
+    "description": "Claude Code plugins used and developed by secustor"
+  },
+  "plugins": [
+    {
+      "name": "renovate-config-debugger",
+      "source": {
+        "source": "github",
+        "repo": "secustor/renovate-config-debugger"
+      },
+      "description": "Debug Renovate configs with Renovate's own code"
+    }
+  ]
+}
