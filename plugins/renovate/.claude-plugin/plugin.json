@@ -1,0 +1,14 @@
+{
+  "name": "renovate",
+  "description": "Edit, review and migrate Renovate configs and shared presets with proven practices. Every change is resolved and simulated through the renovate-config-debugger tools before it is handed over.",
+  "version": "0.1.0",
+  "author": {
+    "name": "secustor",
+    "url": "https://github.com/secustor"
+  },
+  "homepage": "https://github.com/secustor/claude-marketplace",
+  "repository": "https://github.com/secustor/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["renovate", "renovatebot", "dependency-management", "configuration"],
+  "dependencies": ["renovate-config-debugger"]
+}

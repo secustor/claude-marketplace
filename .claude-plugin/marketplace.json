@@ -15,6 +15,19 @@
         "repo": "secustor/renovate-config-debugger"
       },
       "description": "Debug Renovate configs with Renovate's own code"
+    },
+    {
+      "name": "renovate",
+      "source": "./plugins/renovate",
+      "description": "Edit, review and migrate Renovate configs with proven practices; proves every edit with renovate-config-debugger",
+      "version": "0.1.0",
+      "author": {
+        "name": "secustor",
+        "url": "https://github.com/secustor"
+      },
+      "license": "MIT",
+      "keywords": ["renovate", "renovatebot", "dependency-management", "configuration"],
+      "category": "development"
     }
   ]
 }
