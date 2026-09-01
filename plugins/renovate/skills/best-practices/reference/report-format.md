@@ -27,8 +27,13 @@ Resolved: <n> presets, <r> rules (<k> from this file, <r-k> from `<extends entry
 ### Consider
 …
 
-### Not verified
-- <finding> — needs <what: a sourceUrl, the org preset, repo settings>.
+### Not verified (hypotheses)
+- <finding> — why the tools could not compute it (a `matchJsonata` rule:
+  `simulate` reports `no-match` with `readFields: []`; a preset that failed
+  to fetch: `stageStatus.preset: error`; a repo setting or workflow trigger;
+  a dependency without `sourceUrl`) and the check that settles it
+  (`RCD_GITHUB_TOKEN`, `gh api repos/O/R/rules/branches/main`,
+  `renovate --dry-run=lookup`).
 ```
 
 ## Rules
@@ -60,4 +65,18 @@ Resolved: <n> presets, <r> rules (<k> from this file, <r-k> from `<extends entry
 - **Do not repeat by-design behaviour as a finding.** A preset losing its
   wrapper description, `config:recommended` enabling the dashboard, monorepo
   groups: mention them only where they answer the user's question.
-- **A finding you did not run a check for is a hypothesis.** Label it.
+- **A finding you did not run a check for is a hypothesis.** Label it, and
+  say which check would settle it. Four cases arrive as hypotheses by
+  construction: rules gated by `matchJsonata` (rcd `simulate` cannot evaluate
+  them — a `no-match` with `readFields: []` is not a verdict); presets that
+  failed to fetch (`accepted: true` beside `stageStatus.preset: error` says
+  nothing about that layer); repository settings and workflow triggers
+  (required checks, rulesets, CODEOWNERS, `allow_auto_merge`, push-only
+  workflows — `reference/automerge-gates.md` has the `gh` recipes); and
+  matchers whose input the simulated dependency lacked (`missingInputs`).
+- **Version-gate against the consumer's pin.** A fact that holds from a
+  given Renovate release (the `workflow` depType and the widened
+  `helpers:pinGitHubActionDigests*` bodies from 44.43.0, relative preset
+  references from 44.29.0) is stated with that threshold and checked against
+  the version the consumer's runner pins (its `package.json`), not the
+  version the debugger resolved with.
