@@ -95,4 +95,4 @@ validator falls back from RE2 to JavaScript regexes with a warning and
 
 ## License
 
-MIT. Renovate itself is AGPL-3.0; the debugger is AGPL-3.0-only.
+MIT. Renovate itself and the debugger are both AGPL-3.0-only.
