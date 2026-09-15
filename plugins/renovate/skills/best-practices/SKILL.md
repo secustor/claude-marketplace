@@ -1,6 +1,6 @@
 ---
 name: best-practices
-description: Review a Renovate configuration against proven practices and report what to change — preset choice (config:recommended vs config:best-practices), supply-chain hardening (digest pinning with exact-version comments, minimumReleaseAge floors and first-party exemptions, the vulnerability-alert gap, no npx in CI), automerge safety (what `automerge: true` actually arms; required checks, rulesets, CODEOWNERS, push-only workflows), GitHub Actions pinning and reusable workflows, grouping, rate limits, lock file maintenance, holds versus red PRs, deprecated syntax, preset-repo hygiene — with every finding verified through the renovate-config-debugger tools instead of from memory, and findings the tools cannot compute labelled as hypotheses. Use when asked to review, audit, harden, clean up or set up a renovate.json / renovate.json5 / preset repo, when a Renovate PR merged something it should not have or did not automerge, or for "is this config good".
+description: Review a Renovate configuration against proven practices and report what to change — preset choice (config:recommended vs config:best-practices), supply-chain hardening (digest pinning with exact-version comments, minimumReleaseAge floors and first-party exemptions, the vulnerability-alert gap, no npx in CI), automerge safety (what `automerge: true` actually arms; required checks, rulesets and bypass actors, merge queues, CODEOWNERS, push-only workflows), GitHub Actions pinning and reusable workflows, grouping, rate limits, lock file maintenance, holds versus red PRs, deprecated syntax, preset-repo hygiene — with every finding verified through the renovate-config-debugger tools instead of from memory, and findings the tools cannot compute labelled as hypotheses. Use when asked to review, audit, harden, clean up or set up a renovate.json / renovate.json5 / preset repo, when a Renovate PR merged something it should not have or did not automerge, or for "is this config good".
 ---
 
 # Renovate best practices review
@@ -56,18 +56,19 @@ No MCP: `npx -y @renovate-config-debugger/cli digest|validate|provenance|docs`.
    exemption: `simulate` with `updateType: "pinDigest"`. A release-age
    exemption: `simulate` with and without `sourceUrl` and read
    `missingInputs`.
-5. **Separate config from repo settings.** Required checks, rulesets,
-   CODEOWNERS, `allow_auto_merge`, workflow triggers and the package
-   manager's own cooldown decide whether automerge merges and whether a red
-   PR is even possible. None of that is in the config: report it under "Not
+5. **Separate config from repo settings.** Required checks, rulesets and
+   their bypass actors, merge queues, CODEOWNERS, `allow_auto_merge`,
+   workflow triggers and the package manager's own cooldown decide whether
+   automerge merges and whether a red PR is even possible. None of that is in the config: report it under "Not
    verified" with the `gh` recipe from `reference/automerge-gates.md`, or run
    the recipe when the user has `gh` access to the repo.
 6. **Report** with `reference/report-format.md`. Severity first, one verdict
    sentence per finding, the evidence line (rule index as both repo and merged
    index, preset name that wrote the value, Renovate version), then the exact
    edit. State version-gated facts (the `workflow` depType from 44.43.0,
-   relative preset refs from 44.29.0) against the **consumer's** pinned
-   version — read from the runner's `package.json` — not the debugger's.
+   relative preset refs from 44.29.0, merge-queue handling without platform
+   auto-merge from 44.73.0) against the **consumer's** pinned version — read
+   from the runner's `package.json` — not the debugger's.
 
 Do not present a finding that rests on a matcher whose input you did not
 supply, on a hedge about what "may" happen, or on option semantics you

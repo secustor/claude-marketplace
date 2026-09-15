@@ -206,6 +206,17 @@ until those recipes have been run.
   block it independently. A non-required failing check does **not**: red PRs
   merge, and `renovate/artifacts` is not a gate. Say "configured" or
   "actually merges". (high, repo settings)
+- **Merge queue or merge train: know which path is in play (44.73.0+).**
+  With `platformAutomerge: true` GitHub's auto-merge enqueues and needs
+  `allow_auto_merge`. With `platformAutomerge: false` Renovate enqueues
+  itself: no `allow_auto_merge`, `autoMergeRequest` stays null, the branch is
+  not deleted and it does not count as the run's one automerge.
+  `rebaseWhen: auto` resolves to `conflicted`, so an explicit
+  `behind-base-branch` fights the queue. `automergeType: branch` works only
+  when Renovate is a bypass actor with `bypass_mode: always`; otherwise every
+  run logs a warning and opens a PR instead. Runners older than 44.73.0 need
+  `platformAutomerge: true` for any queue. Long form and the `gh` recipes in
+  `reference/automerge-gates.md`. (high, repo settings; version-gated)
 - **Automerge only what a required check tests, on the PR.** The required
   workflow must run on `pull_request`/`merge_group` — push-only `deploy.yml`
   / `publish.yml` see the change after the merge (an org audit found 140 of

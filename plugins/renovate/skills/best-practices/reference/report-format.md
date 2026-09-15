@@ -77,6 +77,9 @@ Resolved: <n> presets, <r> rules (<k> from this file, <r-k> from `<extends entry
 - **Version-gate against the consumer's pin.** A fact that holds from a
   given Renovate release (the `workflow` depType and the widened
   `helpers:pinGitHubActionDigests*` bodies from 44.43.0, relative preset
-  references from 44.29.0) is stated with that threshold and checked against
+  references from 44.29.0, merge-queue enqueuing with
+  `platformAutomerge: false`, the branch-automerge fallback and
+  `rebaseWhen: auto` → `conflicted` behind a queue from 44.73.0) is stated
+  with that threshold and checked against
   the version the consumer's runner pins (its `package.json`), not the
   version the debugger resolved with.

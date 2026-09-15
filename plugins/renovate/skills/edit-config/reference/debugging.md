@@ -167,7 +167,10 @@ gh pr view <n> -R <org>/<repo> --json autoMergeRequest,statusCheckRollup,reviewD
 
 1. `autoMergeRequest: null` -- Renovate never armed platform auto-merge: the
    rule did not fire (rcd `simulate` the update type), or `allow_auto_merge`
-   is off on the repo.
+   is off on the repo. With `platformAutomerge: false` the field is always
+   null; on a runner at 44.73.0 or later with a merge queue, Renovate
+   enqueues the PR itself (log line `PR added to the merge queue`, GraphQL
+   `pullRequest.mergeQueueEntry` non-null) and needs no `allow_auto_merge`.
 2. `reviewDecision: REVIEW_REQUIRED` -- required reviews or
    `require_code_owner_review` with a catch-all CODEOWNERS line; no Renovate
    option fixes it. CODEOWNERS is evaluated from the PR's **base** branch:
@@ -189,6 +192,16 @@ gh pr view <n> -R <org>/<repo> --json autoMergeRequest,statusCheckRollup,reviewD
    aggregators that go green on `skipped`, push-only workflows and merge
    queues without `merge_group` are the usual ways a check is not actually
    gating.
+6. `automergeType: branch` behind a merge queue or merge train (44.73.0+):
+   Renovate tries the push, and when the queue refuses it logs
+   `automergeType=branch is not possible because the base branch only accepts
+   changes through its merge queue - falling back to creating a PR` and opens
+   a PR carrying the same hint. Fix in the ruleset (Renovate as a bypass
+   actor with `bypass_mode: always`) or in the config (`automergeType: pr`).
+   Behind a queue `rebaseWhen: auto` also resolves to `conflicted`, so a PR
+   left behind the base is expected. The rest is in
+   `best-practices/reference/automerge-gates.md`, "Merge queues and merge
+   trains".
 
 Branch names let you filter history: groups land on `renovate/<groupSlug>`
 (`renovate/lock-file-maintenance`), single deps on `renovate/<depName>-<major>.x`;
