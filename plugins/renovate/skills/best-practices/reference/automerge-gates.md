@@ -4,14 +4,14 @@
 `platformAutomerge: true` ("Controls if platform-native auto-merge is used",
 default `true` — `get_option_docs` on 44.42.1) Renovate arms the platform's
 auto-merge on the PR. With `platformAutomerge: false` Renovate merges the PR
-itself once the checks are green — or, from 44.73.0, adds it to the base
-branch's merge queue instead (see "Merge queues and merge trains" below).
-Whether the PR then merges without a human is decided by the repository's
-settings, not by the config. Renovate neither approves nor bypasses anything
-on its own; a bypass it has been granted in a ruleset changes what it can do
-(branch automerge through a queue) but is not something the config can ask
-for. Say which of the two you mean: "automerge is configured" versus
-"automerge actually merges".
+itself, as the bot, once the checks are green — or, from 44.73.0, adds it to
+the base branch's merge queue instead (see "Merge queues and merge trains"
+and "Merging as the bot" below). Whether the PR then merges without a human
+is decided by the repository's settings, not by the config. Renovate neither
+approves nor bypasses anything on its own; a bypass it has been granted in a
+ruleset changes what it can do (branch automerge through a queue, merging as
+the bot) but is not something the config can ask for. Say which of the two
+you mean: "automerge is configured" versus "automerge actually merges".
 
 Nothing in this file can be verified from `renovate.json`. A finding here is a
 hypothesis until the `gh` recipe next to it has been run; report it as such
@@ -30,6 +30,7 @@ Each one stops auto-merge on its own. A PR with every check green sits at
 | `required_signatures`                                                                          | unsigned bot commits rejected                                          | the runner needs `gitPrivateKey`; commits made through the REST Contents API are unsigned                                                                                  |
 | a required context no job reports (renamed or deleted job, `renovate/stability-days`, a non-Actions app) | `BLOCKED` with every listed check green                      | blocks every PR in the repo, forever                                                                                                                                       |
 | merge queue whose required workflows lack a `merge_group` trigger                              | automerge enqueues; the entry sits in `AWAITING_CHECKS` until the queue's check timeout drops it | merge-group check runs are separate from PR check runs; see "Merge queues and merge trains"                                                                    |
+| merge queue on the base + a review rule the bot bypasses with `bypass_mode: always` (`platformAutomerge: false`) | every check green, no comment, no `AddedToMergeQueueEvent`; the run log says `Failed to add PR to the merge queue` … `Waiting on code owner review` at debug level | enqueue eligibility ignores `always`; the bot needs `exempt` — see "Merging as the bot"                                                                                    |
 | conflict with the base (`mergeable: CONFLICTING`, `mergeStateStatus: DIRTY`)                   | `gh pr checks` shows only external App checks; `gh run list --branch <head>` is empty | GitHub runs no `pull_request` workflow at all when it cannot build the merge commit; rebase, nothing is wrong with the workflows. Frequent where Renovate automerges into a directory an open PR rewrites |
 | an org-level ruleset                                                                           | same as above, per-repo settings look permissive                        | classic `branches/<b>/protection` can report `reviews=none checks=0` while an active ruleset requires a code-owner review — query both                                       |
 
@@ -55,9 +56,14 @@ gh pr checks <n>
 gh api repos/O/R/contents/.github/CODEOWNERS --jq .content | base64 -d
 gh api repos/O/R/codeowners/errors                         # necessary, not sufficient
 gh pr list -R O/R --app <bot-slug> --json number,title,reviewDecision,mergeStateStatus
+gh api "repos/O/R/rulesets/<id>?includes_parents=true" --jq '{name, bypass_actors}'   # org rulesets too; no admin:org scope needed
+gh api orgs/O/installations --jq '.installations[] | "\(.app_id) \(.app_slug)"'      # Integration actor_id -> App
+gh api graphql -f query='{repository(owner:"O",name:"R"){pullRequest(number:N){isInMergeQueue mergeQueueEntry{state position} timelineItems(last:10,itemTypes:[ADDED_TO_MERGE_QUEUE_EVENT,REMOVED_FROM_MERGE_QUEUE_EVENT]){nodes{__typename ... on RemovedFromMergeQueueEvent{reason}}}}}}'
 ```
 
-Reading the answers: `autoMergeRequest` non-null means Renovate armed it.
+Reading the answers: `autoMergeRequest` non-null means Renovate armed it;
+`null` is normal with `platformAutomerge: false` (the bot merges on its next
+run instead — the run log, not the PR, has the outcome).
 `REVIEW_REQUIRED` plus a requested team is CODEOWNERS. `APPROVED` + `BLOCKED` +
 `statusCheckRollup: FAILURE` is CI — no Renovate option fixes it.
 `reviewDecision: null` with a pending required team is an org ruleset.
@@ -167,6 +173,8 @@ What changes when the base branch has a queue:
   queue entry) and the "one automerge per base branch per run" rule does not
   apply. A PR already in the queue is left alone on later runs
   (`PR #n is already in the merge queue`) and its branch is not pushed to.
+  A review rule the bot bypasses must use `bypass_mode: exempt` for the
+  enqueue to be accepted ("Merging as the bot").
 - **`allow_auto_merge` is not needed on that path.** It still is for
   `platformAutomerge: true`, where GitHub's own auto-merge does the
   enqueuing. Enable "Automatically delete head branches" in the repo settings
@@ -284,6 +292,56 @@ mise.lock
   queue at all (`bypass_mode: always`); PR automerge enqueues regardless of
   the bypass.
 
+## Merging as the bot: `platformAutomerge: false`
+
+GitHub-native auto-merge does not act as the App, so a bypass-actor entry for
+the bot never applies on that path (observed at an org whose Renovate PRs all
+stayed `REVIEW_REQUIRED` behind the code-owner rule although the App was on
+the bypass list; it switched to `platformAutomerge: false`). With
+`platformAutomerge: false` Renovate calls the merge API itself on the first
+run after the checks are green, as the App, and the App's bypass counts. What
+happens next depends on the base branch (verified on 44.101.2):
+
+- **No merge queue:** `PUT /pulls/<n>/merge` succeeds as a bypass; the PR
+  merges with bot approvals only. `bypass_mode: always` is enough.
+- **Merge queue on the base:** the direct merge is refused with `Repository
+  rule violations found — Changes must be made through the merge queue`
+  (Renovate then retries with squash, merge and rebase: four 405s per run in
+  the log). Since 44.73.0 Renovate enqueues instead (since 44.96.0 only after
+  the direct merge was refused) and reports "added to the merge queue", not
+  automerged. GitHub evaluates enqueue eligibility **without** `always` or
+  `pull_request` bypasses, so a review rule the App would bypass on a direct
+  merge rejects the enqueue: `UNPROCESSABLE … Pull request Waiting on code
+  owner review from <org>/<team>`. Only `bypass_mode: exempt` ("the actor is
+  exempt from rules without generating a pass / fail result") skips the rule
+  for the enqueue as well. The `enqueuePullRequest` input has no bypass flag
+  (`pullRequestId`, `expectedHeadOid`, `jump`, `clientMutationId`), so no
+  Renovate option changes this. Observed: switching the App from `always` to
+  `exempt` on the two org review rulesets enqueued two stuck PRs, one open
+  for 14 days, within two minutes of the apply. GitHub does not document
+  when an `always` bypass is honoured for an enqueue (github/community
+  discussion 74831 is the closest), and one earlier ad-hoc test did see an
+  enqueue succeed with `always`, so treat the rejection message as the
+  evidence and `exempt` as the fix, not `always` as guaranteed to fail.
+- **What it looks like:** every check green, no comment, no
+  `AddedToMergeQueueEvent` on the timeline, the PR body refreshed on every
+  run (so the run happened), and `Failed to add PR to the merge queue` with
+  GitHub's error in the run log — at **debug** level only. Sibling PRs whose
+  files are unowned in CODEOWNERS enqueue fine, which points at the review
+  rule, not at the queue.
+- `exempt` writes no bypass audit entry (GitHub's description); weigh it
+  against the bot-approval audit trail under the CODEOWNERS carve-out. Keep
+  the bot off the merge-queue rule's own bypass list unless skipping the
+  queue is intended: `automergeType: "branch"` needs exactly that (Renovate
+  docs), PR automerge does not.
+- Not a blocker here: a check run with conclusion `neutral` or `skipped`.
+  Renovate's GitHub branch status counts `skipped`, `neutral` and `success`
+  as green (`lib/modules/platform/github/index.ts`, 44.x), and GitHub ignores
+  non-required conclusions for the enqueue.
+- On a merge-queue base Renovate turns `rebaseWhen: auto` into `conflicted`
+  (the queue tests against the head of the base), so "behind base" never
+  holds a PR there.
+
 ## Blast radius
 
 - **Groups multiply it.** One bad member of a weekly automerged group reds
@@ -350,10 +408,14 @@ mise.lock
    `autoMergeRequest: null` → automerge was never armed: either
    `allow_auto_merge` is off or no rule granted it (`get_provenance
    automerge`, then `simulate` — see step 6). Exception: with
-   `platformAutomerge: false` the field is always null; on a 44.73.0+ runner
-   with a merge queue check `mergeQueueEntry` (GraphQL recipe above) and the
-   run log for `PR added to the merge queue` instead.
-2. `REVIEW_REQUIRED` → rulesets and CODEOWNERS (recipes above).
+   `platformAutomerge: false` the field is always null; the bot merges on its
+   next run — read that run's log, and on a 44.73.0+ runner with a merge
+   queue check `mergeQueueEntry` (GraphQL recipe above) and the log for
+   `PR added to the merge queue`.
+2. `REVIEW_REQUIRED` → rulesets and CODEOWNERS (recipes above). If the bot
+   is a bypass actor and merges itself, this blocks only on a merge-queue
+   base, and only while its `bypass_mode` is `always` rather than `exempt`
+   ("Merging as the bot").
 3. `BLOCKED` with `statusCheckRollup: FAILURE` → `gh pr checks`;
    `renovate/artifacts` first; then ask whether the same job is red on `main`
    and on unrelated PRs (`gh run list --workflow <file> --limit 8`). A
@@ -363,7 +425,9 @@ mise.lock
    `renovate/<group slug>`, single dependencies on `renovate/<dep>-<major>.x`.
 4. `BLOCKED`, everything green, no review pending → a required context nobody
    reports (compare `rules/branches/main` with `gh pr checks`), a merge queue
-   without `merge_group`, or `required_signatures`.
+   without `merge_group`, or `required_signatures`. On a merge-queue base
+   with no `AddedToMergeQueueEvent` (GraphQL recipe above): the enqueue was
+   rejected — bypass mode, then the run log.
    With `automergeType: branch` and a queue, a PR that Renovate opened with
    the "only accepts changes through its merge queue" hint is the branch
    fallback: add Renovate as a `bypass_mode: always` bypass actor or set

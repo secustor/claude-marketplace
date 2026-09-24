@@ -170,9 +170,11 @@ gh pr view <n> -R <org>/<repo> --json autoMergeRequest,statusCheckRollup,reviewD
 1. `autoMergeRequest: null` -- Renovate never armed platform auto-merge: the
    rule did not fire (rcd `simulate` the update type), or `allow_auto_merge`
    is off on the repo. With `platformAutomerge: false` the field is always
-   null; on a runner at 44.73.0 or later with a merge queue, Renovate
-   enqueues the PR itself (log line `PR added to the merge queue`, GraphQL
-   `pullRequest.mergeQueueEntry` non-null) and needs no `allow_auto_merge`.
+   null and that is normal: Renovate merges as the bot on its next run, and
+   that run's log has the outcome -- `Automerging #<n>`, then `PR merged`,
+   `PR added to the merge queue` (44.73.0+, GraphQL
+   `pullRequest.mergeQueueEntry` non-null, no `allow_auto_merge` needed), or
+   `Failed to add PR to the merge queue` with GitHub's reason (debug level).
 2. `reviewDecision: REVIEW_REQUIRED` -- required reviews or
    `require_code_owner_review` with a catch-all CODEOWNERS line; no Renovate
    option fixes it. CODEOWNERS is evaluated from the PR's **base** branch:
@@ -193,7 +195,7 @@ gh pr view <n> -R <org>/<repo> --json autoMergeRequest,statusCheckRollup,reviewD
 5. Non-required failing checks are **not** blockers: a red PR merges. `needs:`
    aggregators that go green on `skipped`, push-only workflows and merge
    queues without `merge_group` are the usual ways a check is not actually
-   gating.
+   gating. A `neutral` or `skipped` check run is green to Renovate too.
 6. `automergeType: branch` behind a merge queue or merge train (44.73.0+):
    Renovate tries the push, and when the queue refuses it logs
    `automergeType=branch is not possible because the base branch only accepts
@@ -204,6 +206,11 @@ gh pr view <n> -R <org>/<repo> --json autoMergeRequest,statusCheckRollup,reviewD
    left behind the base is expected. The rest is in
    `best-practices/reference/automerge-gates.md`, "Merge queues and merge
    trains".
+7. Merge-queue base, bot merges itself, PR green but never enqueued (no
+   `AddedToMergeQueueEvent` in the timeline): GitHub rejected the enqueue.
+   It ignores `bypass_mode: always` there; the App needs `exempt` on the
+   review ruleset. Long form and recipes: best-practices
+   `reference/automerge-gates.md`, "Merging as the bot".
 
 Branch names let you filter history: groups land on `renovate/<groupSlug>`
 (`renovate/lock-file-maintenance`), single deps on `renovate/<depName>-<major>.x`;

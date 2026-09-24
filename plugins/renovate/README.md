@@ -72,8 +72,9 @@ the files say which thresholds are exact and what to re-resolve per pin.
   and does not do: the platform-side blockers (required reviews and CODEOWNERS,
   required signatures, `allow_auto_merge`, aggregator jobs, push-only
   workflows, merge queues and merge trains and the bypass actors that let
-  branch automerge push through them), which checks to require and which
-  never to.
+  branch automerge push through them), merging as the bot with
+  `platformAutomerge: false` and why its ruleset bypass needs `exempt` on a
+  merge-queue base, which checks to require and which never to.
 - `best-practices/reference/github-actions.md` — SHA pins with the exact
   released version in the comment, `# main` versus `# vX.Y.Z`, bare SHAs that
   Renovate cannot see, reusable workflows that must stay on tag refs.
