@@ -37,6 +37,13 @@ the files say which thresholds are exact and what to re-resolve per pin.
 - `edit-config/reference/matchers-and-rules.md` — merge order, matcher
   semantics, fail-closed inputs, update-type blocks, `group:` presets in
   rules, grouping, the options that mislead.
+- `edit-config/reference/string-patterns.md` — exact string, minimatch glob or
+  regex in `match*` lists: detection, case handling, how positive and negative
+  entries combine, a negation over a long list, a glob over a regex, and how
+  to prove a rewrite is equivalent.
+- `edit-config/reference/gotchas.md` — the verified "things that bite" list
+  (merge index, update-type blocks, RE2, relative refs, `renovate/*`
+  branches, `pinDigests: false` scope, version gates).
 - `edit-config/reference/migrations.md` — what Renovate rewrites deprecated
   options into (and what it refuses instead).
 - `edit-config/reference/preset-repos.md` — `local>` / `github>` / `//` / `:`
