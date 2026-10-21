@@ -127,6 +127,8 @@ run and a stale preset there is not a cache problem.
   (a `base64: error decoding` on the 404 body is the "file does not exist"
   signal); `gh search code --repo <org>/<repo> <preset>` finds where a preset
   lives.
+- `treeSummary.duplicates` above zero: see `matchers-and-rules.md`, Merge
+  order 3.
 - `simulate` cannot evaluate `matchJsonata` (returns `no-match` with
   `readFields: []`), so `isBreaking`-based automerge rules cannot be proven by
   simulation; say so instead of reporting them as non-matching.

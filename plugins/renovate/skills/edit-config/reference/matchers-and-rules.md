@@ -54,21 +54,16 @@ All `match*` keys in one rule are ANDed. "A or B" is two rules that set the
 same option: a first-party release-age exemption is one rule per identity
 (`matchSourceUrls`, `matchRegistryUrls`, a namespace in `matchPackageNames`,
 and `owner/repo` names for the `github-actions` manager), each with
-`minimumReleaseAge: null`. Within one list, the pattern rules from
-`string-pattern-matching` apply to `matchPackageNames`, `matchDepNames`,
-`matchFileNames`, `matchSourceUrls`, `matchRepositories`, `matchBaseBranches`,
-`matchUpdateTypes`, `managerFilePatterns`, …:
+`minimumReleaseAge: null`. The string syntax inside every list
+(`matchPackageNames`, `matchDepNames`, `matchFileNames`, `matchSourceUrls`,
+`matchRepositories`, `matchBaseBranches`, `matchUpdateTypes`,
+`managerFilePatterns`, …: exact, glob, regex, negation, the `*` / `**`
+validation error) is in `reference/string-patterns.md`.
 
-- plain string = exact match (or a minimatch glob when it contains `*`, `?`,
-  `{}`); `/…/` = RE2 regex, `/…/i` for case-insensitive; leading `!` negates.
-- At least one positive entry must match **and** every negative entry must
-  match. A negation-only list (`["!gradle"]`) means "everything except".
-- `*` or `**` next to any other entry is a **validation error** in current
-  Renovate. The fix `["*", "!x"]` → `["!x"]` is behaviour-preserving only
-  because the remaining entries are all negations; dropping `*` next to a
-  positive pattern narrows the rule.
-- Write the allowlist when the rule decides what counts as a match (explicit
-  names derived from real data), and the plain string when a regex cannot
+- Choosing the entries: write the allowlist when the rule itself defines
+  membership (the exact package set of a group or a lockstep pair, explicit
+  names derived from real data), otherwise follow the ladder in
+  `string-patterns.md`; write the plain string when a regex cannot
   distinguish anything the manager emits: `["/^Org/action-x(/|$)/"]` and
   `["Org/action-x"]` are identical for `github-actions`
   (`compare_simulations` verdict `identical`).
