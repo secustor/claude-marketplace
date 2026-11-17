@@ -167,7 +167,10 @@ gh pr view <n> -R <org>/<repo> --json autoMergeRequest,statusCheckRollup,reviewD
 
 1. `autoMergeRequest: null` -- Renovate never armed platform auto-merge: the
    rule did not fire (rcd `simulate` the update type), or `allow_auto_merge`
-   is off on the repo.
+   is off on the repo. With `platformAutomerge: false` it is normal: Renovate
+   merges as the bot on its next run, and that run's log has the outcome --
+   `Automerging #<n>`, then `PR merged`, `added to the merge queue`, or
+   `Failed to add PR to the merge queue` with GitHub's reason (debug level).
 2. `reviewDecision: REVIEW_REQUIRED` -- required reviews or
    `require_code_owner_review` with a catch-all CODEOWNERS line; no Renovate
    option fixes it. CODEOWNERS is evaluated from the PR's **base** branch:
@@ -188,7 +191,12 @@ gh pr view <n> -R <org>/<repo> --json autoMergeRequest,statusCheckRollup,reviewD
 5. Non-required failing checks are **not** blockers: a red PR merges. `needs:`
    aggregators that go green on `skipped`, push-only workflows and merge
    queues without `merge_group` are the usual ways a check is not actually
-   gating.
+   gating. A `neutral` or `skipped` check run is green to Renovate too.
+6. Merge-queue base, bot merges itself, PR green but never enqueued (no
+   `AddedToMergeQueueEvent` in the timeline): GitHub rejected the enqueue.
+   It ignores `bypass_mode: always` there; the App needs `exempt` on the
+   review ruleset. Long form and recipes: best-practices
+   `reference/automerge-gates.md`, "Merging as the bot".
 
 Branch names let you filter history: groups land on `renovate/<groupSlug>`
 (`renovate/lock-file-maintenance`), single deps on `renovate/<depName>-<major>.x`;

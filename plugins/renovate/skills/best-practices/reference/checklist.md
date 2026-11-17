@@ -203,7 +203,10 @@ until those recipes have been run.
   off, a required review with no bypass actor, `require_code_owner_review`
   plus a catch-all CODEOWNERS line, `required_signatures`, a required context
   nobody reports, and a merge queue whose workflows lack `merge_group` each
-  block it independently. A non-required failing check does **not**: red PRs
+  block it independently. When Renovate merges as the bot instead
+  (`platformAutomerge: false`) onto a merge-queue base, a bypass actor set
+  to `always` rather than `exempt` blocks the enqueue on every code-owned
+  path, silently. A non-required failing check does **not**: red PRs
   merge, and `renovate/artifacts` is not a gate. Say "configured" or
   "actually merges". (high, repo settings)
 - **Automerge only what a required check tests, on the PR.** The required
