@@ -318,19 +318,16 @@ happens next depends on the base branch (verified on 44.101.2):
   (`pullRequestId`, `expectedHeadOid`, `jump`, `clientMutationId`), so no
   Renovate option changes this. Observed: switching the App from `always` to
   `exempt` on the two org review rulesets enqueued two stuck PRs, one open
-  for 14 days, within two minutes of the apply. GitHub does not document
-  when an `always` bypass is honoured for an enqueue (github/community
-  discussion 74831 is the closest), and one earlier ad-hoc test did see an
-  enqueue succeed with `always`, so treat the rejection message as the
-  evidence and `exempt` as the fix, not `always` as guaranteed to fail.
+  for 14 days, within two minutes of the apply. `exempt` is required here;
+  `always` does not work for the enqueue.
 - **What it looks like:** every check green, no comment, no
   `AddedToMergeQueueEvent` on the timeline, the PR body refreshed on every
   run (so the run happened), and `Failed to add PR to the merge queue` with
   GitHub's error in the run log — at **debug** level only. Sibling PRs whose
   files are unowned in CODEOWNERS enqueue fine, which points at the review
   rule, not at the queue.
-- `exempt` writes no bypass audit entry (GitHub's description); weigh it
-  against the bot-approval audit trail under the CODEOWNERS carve-out. Keep
+- `exempt` writes no bypass audit entry (GitHub's description); the
+  bot-approval audit trail under the CODEOWNERS carve-out is what remains. Keep
   the bot off the merge-queue rule's own bypass list unless skipping the
   queue is intended: `automergeType: "branch"` needs exactly that (Renovate
   docs), PR automerge does not.
