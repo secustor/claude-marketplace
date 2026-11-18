@@ -99,11 +99,11 @@ opens no branches); any reasoning about behaviour on top of it is void.
 | matchers of a built-in group | `extends: ["monorepo:x"]` (or `packages:x`) in your rule, restating `groupName` and `matchUpdateTypes` | `extends: ["group:x"]` in a rule (nested rules; warns) |
 | skip a directory of manifests | `matchFileNames` + `enabled: false` in a rule | fighting a preset's `ignorePaths`; `ignoreFileName` does not exist |
 | automerge only non-majors | `matchUpdateTypes: ["!major"]` on the rule | `extends: [":automergeMinor"]` on a rule (scopes only `automerge`); a seven-item list that forgets `replacement` |
-| automerge everything non-breaking (0.x included) | `matchJsonata: ["isBreaking = false"]`; `isBreaking = true` for the review lane | `matchUpdateTypes: ["!major"]` plus a hand-written 0.x guard |
+| automerge everything non-breaking (0.x included) | `matchIsBreaking: false` (>= 44.115.0); `true` for the review lane; `matchJsonata: ["isBreaking = false"]` only on older pins | `matchUpdateTypes: ["!major"]` plus a hand-written 0.x guard; an `isBreaking` entry in `matchJsonata` on a rule that extends a `matchJsonata` selector (the arrays merge and entries are ORed: it matches either) |
 | a major that breaks the build | nothing when a required check catches it: the PR stays red until upstream unblocks | `allowedVersions` (only when CI cannot catch it); never `ignoreDeps` |
 | all packages except X | `matchPackageNames: ["!X"]` | `["*", "!X"]` (rejected by the validator) |
 | a rationale | `description` saying what the rule is **for**; where the link lives and any length cap are the org's style | `comment` (invalid key, config refused) |
-| first-party exemption from `minimumReleaseAge` | one rule per identity (`matchSourceUrls`, `matchRegistryUrls`, a namespace), each `minimumReleaseAge: null` | one rule with every matcher (ANDed) |
+| first-party exemption from `minimumReleaseAge` | one rule per identity (`matchSourceUrls`, a namespace, the serving registry via `matchJsonata: ["$matchRegexOrGlob(registryUrl, '<url>/**')"]` on >= 44.115.0), each `minimumReleaseAge: null` | one rule with every matcher (ANDed); `matchRegistryUrls` (matches any declared registry: Maven lists them all, so Maven Central packages are exempted too) |
 | exempt first-party GitHub Actions | `matchManagers: ["github-actions"]` + `matchPackageNames: ["Org/**"]` | a URL in `matchPackageNames` (never matches) |
 | keep a reusable workflow on a tag ref (OIDC) | `{ matchDepTypes: ["workflow"], pinDigests: false }` on >= 44.43.0 | `matchPackageNames: ["Org/*/.github/workflows/*"]` (names are `owner/repo`) |
 | same on < 44.43.0, or for one repo | `matchManagers: ["github-actions"]`, `matchPackageNames: ["Org/repo"]`, `pinDigests: false` | reverting SHAs before the rule merges (stops future pins only) |
@@ -111,6 +111,8 @@ opens no branches); any reasoning about behaviour on top of it is void.
 | a different cadence for one class of updates | `schedule` inside that rule | a second top-level `schedule:*` preset (`schedule` is not mergeable, it replaces the repo-wide window) |
 | a rule for regex-manager deps | `matchManagers: ["custom.regex"]` | `"regex"` (migrated silently; write the current spelling) |
 | a version in a Dockerfile, workflow or script | `customManagers:dockerfileVersions` or `:githubActionsVersions`; `# renovate:` marker above the variable | a hand-written regex manager or marker |
+| tidy or dedupe after an update | `postUpdateOptions` (`gomodTidy`, `npmDedupe`, `pnpmDedupe`) | a `postUpgradeTasks` shell recipe running the same command |
+| a tool for a `postUpgradeTasks` recipe | `installTools: { node: {} }` plus the version in the rule's `constraints` | a version inside the `installTools` value; relying on what CI installs |
 | an org-wide setting | the shared preset every repo extends | the same lines copied into each repo |
 
 Before writing any `match*` list with more than one entry, a `*`, a `/…/`

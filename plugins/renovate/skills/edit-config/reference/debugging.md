@@ -252,10 +252,14 @@ the fix.
   `allowedCommands` (`^pnpm install --lockfile-only$`). Commands run without a
   TTY (`pnpm dedupe` needs `CI=true`). A command that fails on an unrelated
   snapshot turns every bump into a `renovate/artifacts` failure. In a
-  **grouped** branch only `upgrades[0]`'s tasks run (the first upgrade's config
-  becomes the branch config; sorted by `fileReplacePosition`, then `depName`),
-  so members matching different `postUpgradeTasks` rules run one command set,
-  deterministically -- give every member the same rule or ungroup.
+  **grouped** branch, before 44.244.3 only `upgrades[0]`'s branch-mode tasks
+  run (the first upgrade's config becomes the branch config; sorted by
+  `fileReplacePosition`, then `depName`), so members matching different
+  `postUpgradeTasks` rules run one command set, deterministically -- give
+  every member the same rule or ungroup. 44.244.3 runs the first branch-mode
+  set found on any member and warns about the rest; from 44.249.1 every
+  distinct set runs once, in upgrade order, so each rule carries only its own
+  commands (`matchers-and-rules.md`, Grouping).
 - **mise lock files.** `lockFileMaintenance` on `mise.lock` runs
   `mise lock --bump`, which can execute repository-defined scripts, so it is
   gated: add `"mise"` to the global `allowedUnsafeExecutions`, or a committed
@@ -284,7 +288,9 @@ that matter: relative references 44.29.0; cargo git-tag deps 44.20.1 (44.20.0
 lacks the `package =` fix); `rust-toolchain` and `smithy` managers 43.288.0;
 `overrideDescription` 44.41; depType `workflow` and
 `helpers:pinGitHubActionDigests*` = `["action", "workflow"]` 44.43.0
-(renovatebot/renovate#45443). Between the runner bump and the catalog change
+(renovatebot/renovate#45443); `matchIsBreaking` and `$matchRegexOrGlob`
+44.115.0 (#46449, #46448); branch-mode `postUpgradeTasks` from every grouped
+upgrade 44.249.1 (#48091; first one found from 44.244.3, #48090). Between the runner bump and the catalog change
 the affected dependencies are simply undiscovered.
 
 To date a fix: `sha=$(gh api repos/renovatebot/renovate/pulls/<N> --jq .merge_commit_sha)`,

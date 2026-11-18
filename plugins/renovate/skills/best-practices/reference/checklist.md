@@ -108,9 +108,13 @@ hypotheses with the `gh` recipe that would settle them
   (in `config:best-practices`) is the built-in 3-day npm gate; an org floor
   belongs in a `system/`-style preset every root imports, so no consumer drops
   below it. Exempt what the org publishes in **separate** rules —
-  `matchSourceUrls: ["https://github.com/<org>/**"]`, `matchRegistryUrls` for
+  `matchSourceUrls: ["https://github.com/<org>/**"]`, the serving registry for
   org-owned registries, namespace `matchPackageNames: ["@<scope>{/,}**"]` —
-  because `match*` fields inside one rule are ANDed. The org's own actions
+  because `match*` fields inside one rule are ANDed. `matchRegistryUrls`
+  matches any **declared** registry; Maven declares every repository for
+  every artifact, so it also exempts Maven Central packages. Match the
+  serving one with
+  `matchJsonata: ["$matchRegexOrGlob(registryUrl, '<url>/**')"]` (>= 44.115.0). The org's own actions
   need the exemption too, scoped as `matchManagers: ["github-actions"]` +
   `matchPackageNames: ["<Org>/**"]`: that manager names packages
   `owner/repo`, never a URL, so a URL inside `matchPackageNames` silently
@@ -226,6 +230,12 @@ until those recipes have been run.
   ran only install, typecheck and synth), and must include a frozen-lockfile
   install (`npm ci`, `pnpm install --frozen-lockfile`, `cargo --locked`).
   (high, repo settings)
+- **`automergeType: "branch"` has checks on `push` to `renovate/**`.** No PR
+  is opened, so `pull_request`-only workflows never run; whatever does report
+  on the push decides the merge. `automergeType` alone does not
+  make an update eligible; `automerge: true` must match it. (high, repo
+  settings) Verify: `gh run list --branch renovate/<topic> --json event`
+  shows `push` runs of the required workflows.
 - **Required checks: pinned to the reporting app, aggregated by one terminal
   job.** `integration_id: 15368` for GitHub Actions (an `app_id: null` context
   is greenable by any write actor); reusable-workflow checks are composite
@@ -386,13 +396,18 @@ until those recipes have been run.
   `renovate/artifacts` failure (the "Artifact update problem" block moves to a
   PR comment when the body is truncated; the branch is retried only on a
   package-file change, a conflict, the rebase checkbox or a `rebase!` title).
-  In a grouped branch only `upgrades[0]`'s `postUpgradeTasks` run (default
-  `executionMode: "branch"`; the first upgrade is chosen by
-  `fileReplacePosition`, then `depName`), so one rule covering exactly the
-  group's package set must carry the superset command, or the group is split.
-  Narrow `fileFilters`; self-hosted `allowedCommands` anchored (`^just x$`);
-  recipes must run without a TTY. (medium) Verify: `simulate` each group
-  member → identical `postUpgradeTasks`.
+  Grouped branches with `executionMode: "branch"` tasks (the default is
+  `"update"`, once per member): before 44.244.3 only `upgrades[0]`'s run (the
+  first upgrade is chosen by `fileReplacePosition`, then `depName`), and
+  44.244.3–44.249.0 runs only the first set found, so on those pins one rule
+  covering exactly the group's package set must carry the superset command,
+  or the group is split. From 44.249.1 every distinct set runs once, so a
+  superset rule runs on top of the narrower ones: each rule carries only its
+  own commands, safe to run in sequence; split only incompatible recipes.
+  State the threshold against the consumer's pin. Narrow `fileFilters`;
+  self-hosted `allowedCommands` anchored (`^just x$`); recipes must run
+  without a TTY. (medium) Verify: `simulate` each group member and compare
+  `postUpgradeTasks` (identical on pins below 44.249.1).
 - **Lockstep pairs Renovate can only half-bump are disabled by file**, naming
   the coupled file and where the manual procedure lives in `description`
   (`matchFileNames: ["rust/dylint/rust-toolchain.toml"], enabled: false`).
@@ -412,6 +427,11 @@ until those recipes have been run.
   and `renovate/reconfigure` are exempt; `renovate/configure` is the
   onboarding branch and is always claimed. Rollouts use another prefix.
   (medium)
+- **`gitIgnoredAuthors` holds only dedicated automation identities.** A shared
+  human or CI identity there hides its pushes from modified-branch detection,
+  so Renovate rebases over them or automerges them. (high) Verify: every
+  entry is Renovate's own identity or a bot that commits only on Renovate
+  branches (`reference/automerge-gates.md`).
 - **Before editing a config or workflow, check who owns the file.**
   `.projen/files.json` listing the renovate file means `.projenrc.ts` is the
   source (change both in one commit; a `.projen/` dir with only `tasks.json`

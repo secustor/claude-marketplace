@@ -141,6 +141,18 @@ Reading the answers: `autoMergeRequest` non-null means Renovate armed it.
   assumes a cloud role whose OIDC trust admits only `refs/heads/main` fails
   100% on `renovate/*` branches while `push` to main passes 100%; compare
   conclusions per event with `gh run list --json conclusion,event,headBranch`.
+- **`automergeType: branch` opens no PR**, so `pull_request` workflows never
+  run on it. The required checks must also trigger on
+  `push: { branches: ["renovate/**"] }`. Renovate merges on the checks of the
+  branch's head commit: with no checks at all it waits (`yellow`), but when
+  only some push-triggered check reports (a lint workflow, an App check) that
+  check alone decides the merge and the PR-only tests never run. Setting `automergeType` alone does not make an update eligible:
+  `automerge: true` still has to match it.
+
+  ```bash
+  grep -l -E 'renovate/' .github/workflows/*.y*ml                  # workflows that run on Renovate branch pushes
+  gh run list --branch renovate/<topic> --json name,event,conclusion  # event must include push
+  ```
 
 ## Merge queues and merge trains (Renovate 44.73.0+)
 
@@ -283,6 +295,15 @@ mise.lock
   entry also decides whether `automergeType: branch` can push through a merge
   queue at all (`bypass_mode: always`); PR automerge enqueues regardless of
   the bypass.
+- **`gitIgnoredAuthors` lists dedicated automation identities only**:
+  Renovate's own commit identities and bots that commit nothing but fixups on
+  Renovate branches. A commit by any other author marks the branch modified,
+  and Renovate then stops rebasing, updating and automerging it
+  (`pr-edited`). An ignored author's commit is invisible to that check: a
+  shared human or CI identity in the list lets anyone holding those
+  credentials push code onto a Renovate branch that Renovate then rebases
+  over or automerges. Audit: `gh api repos/O/R/commits?sha=renovate/<topic>
+  --jq '.[].commit.author.email'` against the list.
 
 ## Blast radius
 

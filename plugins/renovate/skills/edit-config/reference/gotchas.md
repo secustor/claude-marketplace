@@ -52,7 +52,9 @@ and manager blocks, `matchSourceUrls` and `matchCategories` in
   (`> This PR body was truncated due to platform limits.`). The branch is
   retried only on a package-file change, a conflict, the rebase checkbox, or a
   `rebase!` title prefix — fixing the cause on `main` does not regenerate the
-  open PR. In a grouped branch only `upgrades[0]`'s tasks run.
+  open PR. In a grouped branch, `executionMode: "branch"` tasks come from
+  `upgrades[0]` only before 44.244.3; from 44.249.1 every distinct set from
+  every upgrade runs once (`matchers-and-rules.md`, Grouping).
 - `renovate/*` is the bot's prefix. A commit by an author not in
   `gitIgnoredAuthors` stops Renovate rebasing that branch (push a fix and merge
   as-is; letting Renovate recreate the branch discards it). A branch under the
@@ -76,5 +78,7 @@ and manager blocks, `matchSourceUrls` and `matchCategories` in
   `workflow` depType and `helpers:pinGitHubActionDigests*` covering workflows
   44.43.0; relative refs 44.29.0; cargo git-tag deps with `package =` renames
   44.20.1; `rust-toolchain` / `smithy` managers 43.288.0; `overrideDescription`
-  44.41. `reference/custom-managers.md` has the recipe to date a fix. 44.0.0
+  44.41; `matchIsBreaking` and JSONata `$matchRegexOrGlob` 44.115.0;
+  branch-mode `postUpgradeTasks` from every grouped upgrade 44.249.1.
+  `reference/custom-managers.md` has the recipe to date a fix. 44.0.0
   was an accidental major: 43.x -> 44.x carries no breaking changes.
