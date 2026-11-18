@@ -36,7 +36,8 @@ the files say which thresholds are exact and what to re-resolve per pin.
 
 - `edit-config/reference/matchers-and-rules.md` — merge order, matcher
   semantics, fail-closed inputs, update-type blocks, `group:` presets in
-  rules, grouping, the options that mislead.
+  rules, grouping and grouped `postUpgradeTasks` per version,
+  `postUpgradeTasks` tools and `fileFilters`, the options that mislead.
 - `edit-config/reference/string-patterns.md` — exact string, minimatch glob or
   regex in `match*` lists: detection, case handling, how positive and negative
   entries combine, a negation over a long list, a glob over a regex, and how
@@ -52,7 +53,8 @@ the files say which thresholds are exact and what to re-resolve per pin.
   pins and the `renovate-config` manager, versioning a preset repo, designing
   a catalog, testing a preset change on a branch, rollout order.
 - `edit-config/reference/custom-managers.md` — the preference order before
-  writing a regex manager, RE2 constraints, proving extraction.
+  writing a regex manager, checksum-pinned downloads, duplicate extraction,
+  RE2 constraints, proving extraction.
 - `edit-config/reference/validation.md` — the canonical
   `renovate-config-validator` invocation, what it checks and its blind spots,
   exact messages, a CI recipe for a preset repository, the
@@ -72,8 +74,8 @@ the files say which thresholds are exact and what to re-resolve per pin.
   and does not do: the platform-side blockers (required reviews and CODEOWNERS,
   required signatures, `allow_auto_merge`, aggregator jobs, push-only
   workflows, merge queues and merge trains and the bypass actors that let
-  branch automerge push through them), which checks to require and which
-  never to.
+  branch automerge push through them, `push` triggers for branch automerge,
+  `gitIgnoredAuthors`), which checks to require and which never to.
 - `best-practices/reference/github-actions.md` — SHA pins with the exact
   released version in the comment, `# main` versus `# vX.Y.Z`, bare SHAs that
   Renovate cannot see, reusable workflows that must stay on tag refs.

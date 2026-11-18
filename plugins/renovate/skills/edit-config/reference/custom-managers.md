@@ -115,11 +115,25 @@ consumer's runner pins** — not in `latest`. Order of preference:
    table in `Cargo.toml`. Make the tool a lockfile-pinned devDependency, or
    hoist the version into a `_VERSION` variable with a marker.
 
+   A download pinned by version **and** checksum needs both to move in one
+   update: capture the SHA-256 as `currentDigest` and use a datasource that
+   computes the new one. `github-release-attachments` does (it finds the asset
+   whose hash is `currentDigest` in the `currentValue` release, from a
+   `SHASUMS`-style file or by hashing the asset, and returns the matching
+   hash for `newValue`; sha256/sha512). Tracking only the version breaks the
+   install at the checksum step; removing the verification is not the fix.
+
 4. **A `customType: regex` manager** when none of the above fits. When the
    value lives in a table no manager owns, a regex manager on a datasource
    that already lists the versions (`datasourceTemplate: "github-releases"`,
    `depNameTemplate: "Org/repo"`) beats publishing to a private registry only
    to give the `crate` datasource something to read.
+
+   Run `extract_deps` on the real file first. If a built-in manager already
+   returns the dependency, a regex manager on the same file updates the same
+   version a second time: under a different `depName` that is a second branch
+   for the same change, which conflicts once either merges. Use the built-in
+   row (or disable that manager for the file) instead.
 
 ## Writing a regex manager
 

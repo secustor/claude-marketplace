@@ -280,6 +280,12 @@ as protective as the review of that bump PR -- govern it with a rule on
   match how the manager names the dependency (a GitHub slug for
   `github-tags`, `group:artifact` for Maven). The validator rejects a bare
   selector file outside a `packageRule`; CI wraps them (see `validation.md`).
+- **Selector and classification presets never set or clear `groupName`.** A
+  `packages/`, trust or breaking-change preset that writes `groupName` (or
+  `groupName: null`) regroups or ungroups every package it matches whenever
+  its rule comes after the `groups/` preset or upstream `monorepo:*` group
+  that assigned one (the last matching rule wins). Grouping lives in
+  `groups/` presets only.
 - **Team overlays** are `teams/<team>.json` files in the shared repo, gated by
   a CODEOWNERS line after the default-owner line (a team named there must hold
   write access or the entry is silently ignored). They extend the recommended

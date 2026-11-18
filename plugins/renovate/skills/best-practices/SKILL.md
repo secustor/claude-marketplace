@@ -67,7 +67,8 @@ No MCP: `npx -y @renovate-config-debugger/cli digest|validate|provenance|docs`.
    index, preset name that wrote the value, Renovate version), then the exact
    edit. State version-gated facts (the `workflow` depType from 44.43.0,
    relative preset refs from 44.29.0, merge-queue handling without platform
-   auto-merge from 44.73.0) against the **consumer's** pinned version — read
+   auto-merge from 44.73.0, `matchIsBreaking` from 44.115.0, grouped
+   branch-mode `postUpgradeTasks` from every member from 44.249.1) against the **consumer's** pinned version — read
    from the runner's `package.json` — not the debugger's.
 
 Do not present a finding that rests on a matcher whose input you did not

@@ -118,6 +118,27 @@ validation error) is in `reference/string-patterns.md`.
   debugger cannot evaluate it**: `simulate` reports the clause as `no-match`
   with `readFields: []`, so an `isBreaking`-based automerge rule cannot be
   proven by simulation — say so in the hand-over and prove it on a real PR.
+- `matchJsonata` is mergeable and its entries are ORed. A rule that extends a
+  selector preset carrying `matchJsonata` and adds its own expression matches
+  **either** expression, not both. Use a separate `match*` field for the extra
+  condition (fields are ANDed).
+- `matchIsBreaking: true | false` (44.115.0, renovatebot/renovate#46449) is
+  the native form of `isBreaking = true | false`: same versioning-based
+  classification, never matches without an update (`lockFileMaintenance`),
+  and, like `matchUpdateTypes`, cannot share a rule with a pre-lookup option.
+  Prefer it over `matchJsonata` on pins that have it: it ANDs with an extended
+  selector, and `simulate` evaluates it (pass `isBreaking` in the dep).
+- `matchRegistryUrls` matches when **any** of the dependency's declared
+  `registryUrls` matches (`registryurls.ts`). Maven declares every repository
+  in the build for every artifact, so a first-party-registry exemption
+  (`minimumReleaseAge: null`) also exempts packages served from Maven
+  Central. Match the registry that served the release instead:
+  `matchJsonata: ["$matchRegexOrGlob(registryUrl, 'https://maven.example.com/**')"]`
+  (`$matchRegexOrGlob` from 44.115.0). `registryUrl` is set by the lookup
+  (per release when several Maven registries return the package), so the
+  rule works for post-lookup options such as `minimumReleaseAge` and never
+  matches pre-lookup. `simulate` cannot evaluate it; test with an external
+  artifact that has both registries declared.
 - `matchDepTypes` values worth knowing: language versions are first-class
   dependencies, enabled by default — pep621 `requires-python`, gomod `golang`
   and `toolchain`, npm `engines`, `rust-toolchain` `toolchain`.
@@ -172,6 +193,12 @@ only when it has an `api` key fetches `{api}/api/v1/crates/{name}` and sets
 every `matchSourceUrls` rule (monorepo groups, first-party exemptions) miss its
 crates. Non-crates.io registries also need the **global** option
 `allowCustomCrateRegistries: true`, which a repo config cannot set.
+
+When `sourceUrl` is missing because the package's own metadata lacks it (no
+`repository` in `package.json` or `Cargo.toml`, no `<scm>` in the POM), fix
+the metadata at the publisher. A name-based exception instead has to be added
+to every consumer and drifts as packages are added; the existing
+`matchSourceUrls` rule works once a release carries the field.
 
 ## Rule-scoped versus update-type-scoped
 
@@ -229,14 +256,28 @@ gates every group in the config.
   run split as well.
 - Whether a group actually forms depends on the repository's pending updates;
   `simulate_group` answers it for the updates you supply and says so.
-- In a grouped branch only `upgrades[0]`'s `postUpgradeTasks` run
-  (`executionMode: "branch"`): `generate.ts` copies the first upgrade's config
-  onto the branch, and `upgrades[0]` is decided by sorting on
+- Which `executionMode: "branch"` tasks a grouped branch runs depends on the
+  pinned version (`execute-post-upgrade-commands.ts`). Upgrades are ordered by
   `fileReplacePosition` then `depName` (`@smithy/types` sorts before
-  `software.amazon.smithy:*`). A group whose members match different
-  `postUpgradeTasks` rules runs one command set — the same one every time.
-  Give one rule covering exactly the group's package set the superset command,
-  or ungroup. Check: `simulate` each member and compare `postUpgradeTasks`.
+  `software.amazon.smithy:*`). `"update"` tasks (the default) run per member
+  on every version.
+  - **< 44.244.3**: only `upgrades[0]`'s tasks (`generate.ts` copies the first
+    upgrade's config onto the branch); nothing branch-mode runs when that
+    member has none. A group whose members match different `postUpgradeTasks`
+    rules runs one command set — the same one every time. Give one rule
+    covering exactly the group's package set the superset command, or ungroup.
+  - **44.244.3 – 44.249.0** (renovatebot/renovate#48090): the first
+    branch-mode set found on any member runs; the others are skipped with the
+    WARN `Skipping postUpgradeTasks with executionMode=branch that differ from
+    the first one found`. Same remedy.
+  - **>= 44.249.1** (renovatebot/renovate#48091): every distinct branch-mode
+    set runs once, in upgrade order. "Distinct" is deep equality of the whole
+    `postUpgradeTasks` object: two rules with the same command but different
+    `fileFilters` both run it. A superset rule now runs **in addition** to the
+    narrower ones; give each rule only its own commands, and make them safe to
+    run in sequence. Ungroup only when the recipes are incompatible.
+  - Check: `simulate` each member and compare `postUpgradeTasks`; `simulate` shows
+    the per-member value, not which sets the branch runs.
 - One upstream version declared in two managers (a CLI in `mise.toml` and its
   Maven coordinates in `smithy-build.json`; `cargo:` tools in `mise.toml` and
   crates in `Cargo.toml`) needs a rule whose matcher reaches both spellings
@@ -277,6 +318,13 @@ gates every group in the config.
   (`**/node_modules/**`, `**/bower_components/**`, `**/vendor/**`,
   `**/examples/**`, `**/__tests__/**`, `**/test/**`, `**/tests/**`,
   `**/__fixtures__/**`). "Renovate ignores my example project" is usually this.
+  `ignorePaths` is not mergeable: a repo's `ignorePaths: ["legacy/**"]`
+  replaces those eight globs (`get_provenance ignorePaths` shows `overwrite`),
+  so `node_modules` and test fixtures are extracted again. Restate the
+  inherited globs next to the new one, or skip the directory with a
+  `matchFileNames` + `enabled: false` rule, which still extracts the file
+  (its dependencies get `skipReason: disabled`) and leaves `ignorePaths`
+  alone.
 - `ignoreDeps: []` inside internal presets is an upstream hack for onboarding
   descriptions, not something to copy (removed in 44.41 in favour of
   `overrideDescription`).
@@ -290,12 +338,31 @@ gates every group in the config.
   each recipe as an anchored regex in the global `allowedCommands`
   (`^just renovate_lockfiles$`). Recipes must run without a TTY (`pnpm dedupe`
   needs `CI=true`).
+- Try `postUpdateOptions` before a shell recipe: `gomodTidy` (and
+  `gomodTidyAll`, `gomodUpdateImportPaths`), `npmDedupe`, `pnpmDedupe`,
+  `yarnDedupeHighest` run inside the manager's own artifact update and need
+  no `allowedCommands` entry.
+- Tools: `installTools: { node: {} }` names Containerbase tools (an unknown
+  name is skipped with a WARN); the version comes from `constraints` on the
+  same rule (`constraints: { node: "^22" }`), never from the `installTools`
+  value. Branch-mode tasks take `constraints` from the branch config (the
+  first upgrade's). `installTools` does nothing under the global
+  `binarySource: "global"`; there the runner image must already carry the
+  tool. A tool CI installs is not proof the runner has it.
+- `fileFilters` decide what is committed: a changed file that matches none is
+  dropped with only a DEBUG line (`Post-upgrade file did not match any file
+  filters`). When a generated file or lockfile moves, move the filter with it,
+  or the codegen succeeds and its output is discarded.
+- `workingDirTemplate` sets the command's directory, relative to the repo
+  root (`"{{{packageFileDir}}}"` for a sub-package); unset, commands run at
+  the root.
 - A command that exits non-zero makes Renovate commit nothing and report the
   commit status `renovate/artifacts` = failure plus an `Artifact update
   problem` block in the PR body (a PR comment when the body is truncated). The
   branch is retried only when a package file changes, the branch conflicts,
   the rebase checkbox is ticked, or the title gets a `rebase!` prefix.
-- Grouped branches run one member's tasks only — see Grouping.
+- Grouped branches run one member's branch-mode tasks before 44.244.3 and
+  every distinct set from 44.249.1 — see Grouping.
 - Prove: `simulate` a dependency of each manager and read `postUpgradeTasks`
   in the result; run the recipe locally with `CI=true`.
 

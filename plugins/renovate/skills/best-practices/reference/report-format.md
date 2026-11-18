@@ -79,7 +79,9 @@ Resolved: <n> presets, <r> rules (<k> from this file, <r-k> from `<extends entry
   `helpers:pinGitHubActionDigests*` bodies from 44.43.0, relative preset
   references from 44.29.0, merge-queue enqueuing with
   `platformAutomerge: false`, the branch-automerge fallback and
-  `rebaseWhen: auto` → `conflicted` behind a queue from 44.73.0) is stated
+  `rebaseWhen: auto` → `conflicted` behind a queue from 44.73.0,
+  `matchIsBreaking` and `$matchRegexOrGlob` from 44.115.0, every distinct
+  branch-mode `postUpgradeTasks` set in a group from 44.249.1) is stated
   with that threshold and checked against
   the version the consumer's runner pins (its `package.json`), not the
   version the debugger resolved with.
